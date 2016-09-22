@@ -61,7 +61,7 @@ void OnDeviceSelected(DEVICEID_TYPE deviceId);
 
 static inline DEVICEID_TYPE GetBestDevice()
 {
-    return -1 /*CPUDEVICE*/;
+    return CPUDEVICE;
 }
 
 static inline void OnDeviceSelected(DEVICEID_TYPE) {}
@@ -69,7 +69,7 @@ static inline void OnDeviceSelected(DEVICEID_TYPE) {}
 template <class ConfigRecordType>
 static inline DEVICEID_TYPE DeviceFromConfig(const ConfigRecordType& /*config*/)
 {
-    return -1 /*CPUDEVICE*/;
+    return CPUDEVICE;
 } // tells runtime system to not try to use GPUs
 // TODO: find a way to use CPUDEVICE without a huge include overhead; OK so far since CPUONLY mode is sorta special...
 #endif

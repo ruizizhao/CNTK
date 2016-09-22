@@ -123,8 +123,8 @@ private:
     bool LockDevice(int deviceId, bool trial = true);
 };
 
-static DEVICEID_TYPE g_bestDeviceId = DEVICEID_NOTYETDETERMINED;
-static BestGpu* g_bestGpu = nullptr;
+static DEVICEID_TYPE s_bestDeviceId = DEVICEID_NOTYETDETERMINED;
+static BestGpu* s_bestGpu = nullptr;
 
 // DeviceFromConfig - Parse 'deviceId' config parameter to determine what type of behavior is desired
 //Symbol - Meaning
@@ -144,25 +144,25 @@ static DEVICEID_TYPE SelectDevice(DEVICEID_TYPE deviceId, bool bLockGPU, const i
     if (deviceId == DEVICEID_AUTO)
     {
         // set bestDeviceId once if not set yet
-        if (g_bestDeviceId == DEVICEID_NOTYETDETERMINED)
+        if (s_bestDeviceId == DEVICEID_NOTYETDETERMINED)
         {
             // GPU device to be auto-selected, so init our class
-            if (g_bestGpu == nullptr)
+            if (s_bestGpu == nullptr)
             {
-                g_bestGpu = new BestGpu();
+                s_bestGpu = new BestGpu();
                 for (int i = 0; i < excludedDevices.size(); ++i)
                 {
-                    g_bestGpu->DisallowDevice(excludedDevices[i]);
+                    s_bestGpu->DisallowDevice(excludedDevices[i]);
                 }
 
-                g_bestGpu->DisallowUnsupportedDevices();
+                s_bestGpu->DisallowUnsupportedDevices();
             }
 
-            g_bestDeviceId = (DEVICEID_TYPE)g_bestGpu->GetDevice(BestGpuFlags(bLockGPU ? (bestGpuAvoidSharing | bestGpuExclusiveLock) : bestGpuAvoidSharing));
+            s_bestDeviceId = (DEVICEID_TYPE)s_bestGpu->GetDevice(BestGpuFlags(bLockGPU ? (bestGpuAvoidSharing | bestGpuExclusiveLock) : bestGpuAvoidSharing));
             // TODO: Do we need to hold this pointer at all? We will only query it once. Or is it used to hold lock to a GPU?
         }
         // already chosen
-        deviceId = g_bestDeviceId;
+        deviceId = s_bestDeviceId;
     }
 
     return deviceId;
@@ -175,12 +175,14 @@ DEVICEID_TYPE GetBestDevice()
 
 void OnDeviceSelected(DEVICEID_TYPE deviceId)
 {
-    if (g_bestDeviceId != DEVICEID_NOTYETDETERMINED && g_bestDeviceId != deviceId && g_bestDeviceId >= 0)
+    if (s_bestDeviceId != DEVICEID_NOTYETDETERMINED && s_bestDeviceId != deviceId && s_bestDeviceId >= 0)
     {
         // In case when the selected device id is different from the best device id, 
         // need to release the lock corresponding to the best device, so that other processes
         // can auto-select and use it.
-        g_bestGpu->UnlockDevice(g_bestDeviceId);
+        s_bestGpu->UnlockDevice(s_bestDeviceId);
+        // also, reset best device id
+        s_bestDeviceId = DEVICEID_NOTYETDETERMINED;
     }
 }
 
