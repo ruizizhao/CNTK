@@ -13,10 +13,32 @@ namespace CNTK
 {
     namespace Internal
     {
+        static std::atomic<unsigned long long> s_nextUniqueId(0);
         size_t NewUniqueId()
         {
-            static std::atomic<unsigned long long> s_nextUniqueId(0);
             return s_nextUniqueId++;
+        }
+
+        std::atomic<bool> s_reverseTensorShapesInErrorMessages(false);
+        void EnableReversingTensorShapesInErrorMessages()
+        {
+            s_reverseTensorShapesInErrorMessages.store(true);
+        }
+
+        bool IsReversingTensorShapesInErrorMessagesEnabled()
+        {
+            return s_reverseTensorShapesInErrorMessages.load();
+        }
+
+        std::atomic<bool> s_alwaysAllowSettingDefaultDevice(false);
+        void AlwaysAllowSettingDefaultDevice()
+        {
+            s_alwaysAllowSettingDefaultDevice.store(true);
+        }
+
+        bool IsSettingDefaultDeviceAlwaysAllowed()
+        {
+            return s_alwaysAllowSettingDefaultDevice.load();
         }
     }
 
@@ -47,7 +69,8 @@ namespace CNTK
 
     /*static*/ void DeviceDescriptor::SetDefaultDevice(const DeviceDescriptor& newDefaultDevice)
     {
-        if (s_defaultDeviceFrozen.load())
+        // As a testing backdoor we allow changing the default device even after being "used/frozen"
+        if (!Internal::IsSettingDefaultDeviceAlwaysAllowed() && s_defaultDeviceFrozen.load())
             RuntimeError("Process wide default device cannot be changed since it has been frozen by being implicitly used as the default device in a CNTK API call");
 
         s_defaultDevice.reset(new DeviceDescriptor(newDefaultDevice));
@@ -96,7 +119,7 @@ namespace CNTK
 
     /*static*/ const std::wstring Axis::StaticAxisNamePrefix = L"staticAxis_";
 
-    /*static*/ std::unordered_set<std::wstring> Axis::s_allKnownDynamicAxisNames;
+    /*static*/ Axis::UniqueDynamicAxesNames Axis::s_uniqueDynamicAxisNames;
 
     /*static*/ const std::vector<Axis> Axis::DefaultInputVariableDynamicAxes = { Axis::DefaultDynamicAxis(), Axis::DefaultBatchAxis() };
 
@@ -114,19 +137,11 @@ namespace CNTK
 
     /*static*/ Axis Axis::NewUniqueDynamicAxis(const std::wstring& axisNamePrefix, bool isOrderedDynamicAxis /*= true*/)
     {
-        if (s_allKnownDynamicAxisNames.find(axisNamePrefix) == s_allKnownDynamicAxisNames.end())
-            return Axis(axisNamePrefix, isOrderedDynamicAxis);
-
-        for (size_t i = 1;; i++)
-        {
-            auto newDynamicAxisName = axisNamePrefix + std::to_wstring(i);
-            if (s_allKnownDynamicAxisNames.find(newDynamicAxisName) == s_allKnownDynamicAxisNames.end())
-                return Axis(newDynamicAxisName, isOrderedDynamicAxis);
-        }
+        return Axis(s_uniqueDynamicAxisNames.NewUniqueDynamicAxisName(axisNamePrefix), isOrderedDynamicAxis);
     }
 
     void Axis::RegisterAxisName(const std::wstring& axisName)
     {
-        s_allKnownDynamicAxisNames.insert(axisName);
+        s_uniqueDynamicAxisNames.RegisterAxisName(axisName);
     }
 }

@@ -56,7 +56,7 @@ static void DoEvalBase(const ConfigParameters& config, IDataReader& reader)
     wstring modelPath = config(L"modelPath");
     intargvector mbSize = minibatchSize;
 
-    int traceLevel = config(L"traceLevel", "0");
+    int traceLevel = config(L"traceLevel", 0);
     size_t numMBsToShowResult = config(L"numMBsToShowResult", "100");
     size_t firstMBsToShowResult = config(L"firstMBsToShowResult", "0");
     size_t maxSamplesInRAM = config(L"maxSamplesInRAM", (size_t)SIZE_MAX);
@@ -123,15 +123,18 @@ static void DoEvalBNBase(const ConfigParameters& config, IDataReader& reader)
 template <typename ElemType>
 void DoEvalBN(const ConfigParameters& config)
 {
-	// evaluate batch normalization mean and various
-	ConfigParameters readerConfig(config(L"reader"));
+    // This is actually used for re-estimating the BN node. It *should* actually randomize.
+    // TODO: rename to DoEstimateBN.
 
-	// Should trace level to zero in Post BN?
-	//readerConfig.Insert("traceLevel", config(L"traceLevel", "0"));
+    // evaluate batch normalization mean and various
+    ConfigParameters readerConfig(config(L"reader"));
 
-	DataReader evaBNDataReader(readerConfig);
+    // Should trace level to zero in Post BN?
+    //readerConfig.Insert("traceLevel", config(L"traceLevel", "0"));
 
-	DoEvalBNBase<ElemType>(config, evaBNDataReader);
+    DataReader evaBNDataReader(readerConfig);
+
+    DoEvalBNBase<ElemType>(config, evaBNDataReader);
 }
 
 template <typename ElemType>
@@ -140,9 +143,12 @@ void DoEval(const ConfigParameters& config)
     // test
     ConfigParameters readerConfig(config(L"reader"));
     readerConfig.Insert("traceLevel", config(L"traceLevel", "0"));
+    if (!readerConfig.ExistsCurrent(L"randomize"))
+    {
+        readerConfig.Insert("randomize", "None");
+    }
 
     DataReader testDataReader(readerConfig);
-
     DoEvalBase<ElemType>(config, testDataReader);
 }
 
@@ -177,7 +183,7 @@ void DoCrossValidate(const ConfigParameters& config)
 
     size_t sleepSecondsBetweenRuns = config(L"sleepTimeBetweenRuns", "0");
 
-    int traceLevel = config(L"traceLevel", "0");
+    int traceLevel = config(L"traceLevel", 0);
     size_t numMBsToShowResult = config(L"numMBsToShowResult", "100");
     size_t firstMBsToShowResult = config(L"firstMBsToShowResult", "0");
     size_t maxSamplesInRAM    = config(L"maxSamplesInRAM", (size_t)SIZE_MAX);
