@@ -2917,7 +2917,7 @@ namespace CNTK
     };
 
     /// 
-    /// Instantiate the CNTK buil-in test format minibatch source
+    /// Instantiate the CNTK built-in test format minibatch source
     ///
     inline MinibatchSourcePtr TextFormatMinibatchSource(const std::wstring& dataFilePath, const std::vector<StreamConfiguration>& streamConfigs, size_t epochSize = SIZE_MAX)
     {
