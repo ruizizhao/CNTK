@@ -1,3 +1,4 @@
+import sys
 import os
 import shutil
 from glob import glob
@@ -5,6 +6,10 @@ import platform
 from warnings import warn
 from setuptools import setup, Extension, find_packages
 import numpy
+
+if sys.version_info.major < 3:
+    print("Detected Python v2, which is not yet supported")
+    sys.exit(1)
 
 IS_WINDOWS = platform.system() == 'Windows'
 
@@ -15,7 +20,10 @@ PROJ_LIB_PATH = os.path.join(os.path.dirname(__file__), "cntk", "libs")
 if 'CNTK_LIB_PATH' in os.environ:
     CNTK_LIB_PATH = os.environ['CNTK_LIB_PATH']
 else:
-    CNTK_LIB_PATH = os.path.join(CNTK_PATH, "x64", "Release")
+    if IS_WINDOWS:
+        CNTK_LIB_PATH = os.path.join(CNTK_PATH, "x64", "Release")
+    else:
+        CNTK_LIB_PATH = os.path.join(CNTK_PATH, "build", "gpu", "release", "lib")
 
 print("Using CNTK sources at '%s'"%os.path.abspath(CNTK_SOURCE_PATH))
 print("Using CNTK libs at '%s'"%os.path.abspath(CNTK_LIB_PATH))
@@ -85,10 +93,16 @@ else:
     runtime_library_dirs = ['$ORIGIN/cntk/libs']
     os.environ["CXX"] = "mpic++"
 
+swig_source = os.path.join("cntk", "swig", "cntk_py_wrap.cxx")
+
+if not os.path.exists(swig_source):
+     print("SWIG wrapper missing. Have you run SWIG already?")
+     sys.exit(1)
+
 cntk_module = Extension(
         name="_cntk_py",
 
-        sources=[os.path.join("cntk", "swig", "cntk_py_wrap.cxx")],
+        sources=[swig_source],
 
         libraries=link_libs,
         library_dirs=[CNTK_LIB_PATH],
@@ -108,7 +122,7 @@ cntk_module = Extension(
     )
 
 # do not include tests and examples
-packages = [x for x in find_packages() if x.startswith('cntk')]
+packages = [x for x in find_packages() if x.startswith('cntk') and not x.startswith('cntk.swig')]
 
 if IS_WINDOWS:
     # On Linux copy all runtime libs into the cntk/lib folder. 
